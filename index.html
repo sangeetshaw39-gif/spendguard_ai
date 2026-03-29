@@ -560,10 +560,82 @@
       background-color: var(--bg-surface);
       color: var(--text-high);
     }
+    
+    /* Mobile Menu Toggle */
+    .menu-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: var(--text-high);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      
+      .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        bottom: 0;
+        z-index: 1000;
+        width: 280px;
+        box-shadow: 20px 0 50px rgba(0,0,0,0.3);
+        transition: left 0.3s var(--easing-standard);
+      }
+      
+      .sidebar.active { left: 0; }
+      
+      .menu-btn { display: flex; align-items: center; justify-content: center; }
+      
+      .app-header {
+        justify-content: space-between;
+        padding: var(--spacing-2);
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-color);
+        z-index: 100;
+      }
+
+      .chat-container { padding: var(--spacing-2); }
+      .chat-stream-inner { padding-bottom: 160px; }
+      
+      .insights-grid, .charts-row, .benefits-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .hero h1 { font-size: 28px; }
+      .hero p { font-size: 14px; }
+      
+      .input-wrapper {
+        width: calc(100% - 24px);
+        bottom: 16px;
+        border-radius: 20px;
+        padding: 8px;
+      }
+      
+      .main-input { font-size: 14px; padding: 8px 12px; }
+      
+      .message-content { max-width: 90%; font-size: 14px; }
+
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+        backdrop-filter: blur(4px);
+      }
+      .sidebar-overlay.active { display: block; }
+    }
 
   </style>
 </head>
-<body class="dark-mode">
+  <body class="dark-mode">
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    
     <!-- Premium App Loader -->
     <div id="app-loader">
         <div class="loader-grid"></div>
@@ -575,12 +647,17 @@
     </div>
 
   <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <div class="ai-circle" style="animation: none; width:20px; height:20px;">
-        <div class="ai-circle-inner"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header" style="justify-content: space-between;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="ai-circle" style="animation: none; width:20px; height:20px;">
+          <div class="ai-circle-inner"></div>
+        </div>
+        SpendGuard
       </div>
-      SpendGuard
+      <button class="menu-btn" onclick="toggleSidebar()" style="display: var(--mobile-close-display, none);">
+        <span class="material-symbols-rounded">close</span>
+      </button>
     </div>
     <button class="new-chat-btn" onclick="startNewAnalysis()">
       <span class="material-symbols-rounded" style="font-size:18px;">add</span> New Analysis
@@ -594,7 +671,11 @@
   <!-- Main Content -->
   <div class="app-main">
     <header class="app-header">
-      <select class="currency-select" id="currencySelector" onchange="setCurrency(this.value)">
+      <button class="menu-btn" onclick="toggleSidebar()" title="Toggle Menu">
+        <span class="material-symbols-rounded">menu</span>
+      </button>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <select class="currency-select" id="currencySelector" onchange="setCurrency(this.value)">
         <option value="₹">₹ INR (Indian)</option>
         <option value="$">$ USD (International)</option>
         <option value="€">€ EUR (European)</option>
@@ -671,7 +752,22 @@
       document.getElementById("chatStream").style.display = "block";
     }
 
+    function toggleSidebar(force = null) {
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("sidebarOverlay");
+      const isActive = force !== null ? force : !sidebar.classList.contains("active");
+      
+      sidebar.classList.toggle("active", isActive);
+      overlay.classList.toggle("active", isActive);
+      
+      // Toggle sidebar close button visibility on mobile
+      document.body.style.setProperty('--mobile-close-display', isActive ? 'flex' : 'none');
+    }
+
     function startNewAnalysis() {
+      // Close sidebar if on mobile
+      if(window.innerWidth <= 768) toggleSidebar(false);
+      
       // Clear active analysis context
       currentData = null;
       isProcessing = false;
@@ -843,8 +939,12 @@
             item.className = 'history-item';
             
             item.onclick = async (e) => {
-                 if(e.target.closest('.delete-btn')) return; // ignore if delete clicked
-                 showAnalysis();
+                  if(e.target.closest('.delete-btn')) return; // ignore if delete clicked
+                  
+                  // Close sidebar if on mobile
+                  if(window.innerWidth <= 768) toggleSidebar(false);
+
+                  showAnalysis();
                  chatStream.querySelectorAll('.message').forEach(m => m.remove());
                  chartInstances.forEach(c => c.destroy());
                  chartInstances = [];
