@@ -672,6 +672,10 @@
     }
 
     function startNewAnalysis() {
+      // Clear active analysis context
+      currentData = null;
+      isProcessing = false;
+      
       // Clear stored session
       localStorage.removeItem("spendguard_last_id");
       localStorage.removeItem("spendguard_last_filename");
@@ -683,6 +687,10 @@
             <span id="thinkingText">Preparing secure environment...</span>
           </div>
       `;
+      
+      // Re-bind references broken by innerHTML wipe
+      thinkingIndicator = document.getElementById("thinkingIndicator");
+      thinkingText = document.getElementById("thinkingText");
       
       // Reset file input
       const fileInput = document.getElementById("fileInput");
@@ -729,12 +737,12 @@
     const chatStream = document.getElementById('chatStream');
     const heroView = document.getElementById('heroView');
     const scrollContainer = document.getElementById('scrollContainer');
-    const thinkingIndicator = document.getElementById('thinkingIndicator');
+    let thinkingIndicator = document.getElementById('thinkingIndicator');
     const fileInput = document.getElementById('fileInput');
     const fileChip = document.getElementById('fileChip');
     const fileNameDisplay = document.getElementById('fileNameDisplay');
     const promptInput = document.getElementById('userInput');
-    const thinkingText = document.getElementById('thinkingText');
+    let thinkingText = document.getElementById('thinkingText');
     let thinkingInterval = null;
 
     // Foreign Exchange Conversion Logic
