@@ -43,6 +43,10 @@ def home():
 def favicon():
     return Response(status_code=204)
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 # Upload + Analyze
 @app.post("/analyze")

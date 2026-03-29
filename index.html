@@ -49,6 +49,88 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    /* Premium Loader Styles */
+    #app-loader {
+      position: fixed;
+      inset: 0;
+      background: #000000;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.8s var(--easing-standard), transform 0.8s var(--easing-standard);
+      overflow: hidden;
+    }
+
+    .loader-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(66, 133, 244, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(66, 133, 244, 0.05) 1px, transparent 1px);
+      background-size: 50px 50px;
+      mask-image: radial-gradient(circle at center, black, transparent);
+      opacity: 0.5;
+    }
+
+    .ai-orb {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: var(--gradient-brand);
+      filter: blur(2px);
+      box-shadow: 0 0 60px rgba(66, 133, 244, 0.4);
+      animation: pulse-orb 3s infinite alternate var(--easing-standard);
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .ai-orb::after {
+      content: '';
+      position: absolute;
+      inset: 10px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes pulse-orb {
+      0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 30px rgba(66, 133, 244, 0.3); }
+      100% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 80px rgba(155, 114, 203, 0.6); }
+    }
+
+    .loader-content {
+      position: relative;
+      text-align: center;
+      color: #FFFFFF;
+      z-index: 10;
+    }
+
+    .loader-heading {
+      font-family: var(--font-heading);
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(to bottom, #FFFFFF, #999999);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .loader-status {
+      font-size: 14px;
+      font-weight: 500;
+      color: #666666;
+      font-family: var(--font-mono);
+      min-height: 1.5em;
+      transition: opacity 0.3s ease;
+    }
 
     body {
       font-family: var(--font-body);
@@ -480,7 +562,16 @@
 
   </style>
 </head>
-<body>
+<body class="dark-mode">
+    <!-- Premium App Loader -->
+    <div id="app-loader">
+        <div class="loader-grid"></div>
+        <div class="ai-orb"></div>
+        <div class="loader-content">
+            <h1 class="loader-heading">Initializing SpendGuard AI CFO...</h1>
+            <div class="loader-status" id="loaderStatus">Securing connection...</div>
+        </div>
+    </div>
 
   <!-- Sidebar -->
   <aside class="sidebar">
@@ -952,6 +1043,10 @@
 
           if (data.status === 'error') throw new Error(data.message);
 
+          // Save to persistent storage for refresh restoration
+          localStorage.setItem('spendguard_last_id', data.history_id);
+          localStorage.setItem('spendguard_last_filename', filename);
+
           const totalSpend = data.insights.total_spend || 0;
           saveHistory(filename, totalSpend, data);
 
@@ -1256,12 +1351,86 @@
       html2pdf().set(opt).from(reportDiv).save();
     }
 
+    // Premium Loader Initialization Logic
+    async function initApp() {
+        const loader = document.getElementById('app-loader');
+        const statusText = document.getElementById('loaderStatus');
+        
+        const messages = [
+            "Allocating intelligence...",
+            "Analyzing financial patterns...",
+            "Preparing insights engine...",
+            "Checking CFO integrity...",
+            "Synching data nodes..."
+        ];
+        
+        let msgIndex = 0;
+        const msgInterval = setInterval(() => {
+            statusText.style.opacity = 0;
+            setTimeout(() => {
+                statusText.innerText = messages[msgIndex % messages.length];
+                statusText.style.opacity = 1;
+                msgIndex++;
+            }, 300);
+        }, 2500);
+
+        // Core Initialization Logic
+        initTheme();
+        initCurrency();
+        loadHistory();
+
+        // Wait for Backend Readiness (Health check)
+        let backendReady = false;
+        while (!backendReady) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    backendReady = true;
+                }
+            } catch (err) {
+                console.log("Backend warming up...");
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+
+        // Cleanup and transition
+        clearInterval(msgInterval);
+
+        // Session Restoration Logic
+        const lastId = localStorage.getItem('spendguard_last_id');
+        const lastFilename = localStorage.getItem('spendguard_last_filename');
+
+        if (lastId && lastFilename) {
+            statusText.innerText = "Restoring latest session...";
+            try {
+                const res = await fetch(`${API_BASE_URL}/history/${lastId}`);
+                if (res.ok) {
+                    const restoredData = await res.json();
+                    if (restoredData && restoredData.payload) {
+                        currentData = restoredData.payload;
+                        // Synchronize filename in case it was renamed
+                        const updatedName = restoredData.filename || lastFilename;
+                        await displayAnalysis(currentData, updatedName);
+                    }
+                }
+            } catch (err) {
+                console.warn("Restoration failed, proceeding to clean dashboard.");
+            }
+        }
+
+        statusText.innerText = "Systems Online. Welcome, CFO.";
+        
+        setTimeout(() => {
+            loader.style.opacity = '0';
+            loader.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 800);
+        }, 500);
+    }
+
     // Initialization bindings
-    window.onload = () => {
-      initTheme();
-      initCurrency();
-      loadHistory();
-    };
+    window.onload = initApp;
 
   </script>
 </body>
