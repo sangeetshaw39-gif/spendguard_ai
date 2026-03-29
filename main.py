@@ -71,7 +71,8 @@ async def analyze_file(file: UploadFile = File(...)):
             "insights": result["insights"],
             "ai_insights": result["ai_insights"],
             "anomalies_count": len(result["anomalies"]),
-            "clean_csv_string": result.get("clean_data_csv", "")
+            "clean_csv_string": result.get("clean_data_csv", ""),
+            "warnings": result.get("warnings", [])
         }
 
     except Exception as e:

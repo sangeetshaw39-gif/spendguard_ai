@@ -92,11 +92,27 @@ def clean_data(df, column_map):
     rename_dict = {v: k for k, v in column_map.items()}
     df = df.rename(columns=rename_dict)
 
-    # Ensure required columns exist
-    required_cols = ["date", "vendor", "category", "amount"]
+    warnings = []
+
+    # Ensure required columns exist - Only Amount is strictly required now
+    required_cols = ["amount"]
     for col in required_cols:
         if col not in df.columns:
-            raise ValueError(f"We couldn't detect a required column for '{col}'. Please ensure your file has standard headers like Date, Amount, Vendor, etc.")
+            raise ValueError(f"We couldn't detect a required column for '{col}'. Please ensure your file has at least one numerical column for transaction values.")
+
+    # Pipeline Safety: Ensure other columns exist BEFORE processing
+    if "vendor" not in df.columns:
+        df["vendor"] = "Unknown Vendor"
+        warnings.append("Vendor column missing → default applied")
+    if "category" not in df.columns:
+        df["category"] = "Uncategorized"
+        warnings.append("Category column missing → default applied")
+    if "date" not in df.columns:
+        df["date"] = "Unknown Date"
+        warnings.append("Date column missing → default applied")
+    if "description" not in df.columns:
+        df["description"] = "No description provided"
+        warnings.append("Description column missing → default applied")
 
     detected_currency = "₹"
     currencies = ["$", "€", "£", "₹", "¥"]
@@ -140,7 +156,7 @@ def clean_data(df, column_map):
     # Remove duplicates
     df = df.drop_duplicates()
 
-    return df, detected_currency
+    return df, detected_currency, warnings
 
 
 # -------------------------------
@@ -205,7 +221,7 @@ def run_pipeline(file_path):
     # -------------------------------
     # CLEAN FULL DATA & DETECT CURRENCY
     # -------------------------------
-    df_clean, detected_currency = clean_data(df, column_map)
+    df_clean, detected_currency, warnings = clean_data(df, column_map)
 
     print(f"✅ Rows after cleaning: {len(df_clean)}")
 
@@ -241,7 +257,8 @@ def run_pipeline(file_path):
         "insights": basic_insights, # FULL DATA insights ✅
         "ai_insights": ai_insights,
         "column_map": column_map,
-        "clean_data_csv": df_clean.to_csv(index=False)
+        "clean_data_csv": df_clean.to_csv(index=False),
+        "warnings": warnings
     }
 
 # -------------------------------

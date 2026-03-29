@@ -13,6 +13,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="config.js"></script>
 
   <style>
     :root {
@@ -661,8 +662,18 @@
   </div>
 
   <script>
-    // System logic for SpendGuard UI - using relative paths for universal deployment
-    const API_BASE_URL = ''; 
+    // System logic for SpendGuard UI - using config or dynamic fallback
+    let API_BASE_URL = window.CONFIG?.API_BASE_URL || "http://localhost:8000"; 
+
+    // Surgical Fix: If the URL is still the placeholder, fallback to localhost
+    if (API_BASE_URL.includes("your-render-backend-url")) {
+        API_BASE_URL = "http://localhost:8000";
+    }
+
+    // Render wake-up call to prevent cold starts
+    window.addEventListener("load", () => {
+        fetch(`${API_BASE_URL}/health`).catch(() => {});
+    });
 
     let currentData = null;
     let isProcessing = false;
@@ -1035,13 +1046,26 @@
           clearFile();
 
           const res = await fetch(API_BASE_URL + '/analyze', { method: 'POST', body: fd });
-          if (!res.ok) throw new Error("Server response error: " + res.status);
+          if (!res.ok) {
+              throw new Error("Server error: " + res.status);
+          }
           
           const data = await res.json();
           currentData = data; 
           stopThinkingAnimation();
 
           if (data.status === 'error') throw new Error(data.message);
+
+          // Display warnings if they exist (Surgical Fix)
+          if (data.warnings && data.warnings.length > 0) {
+              const warningHTML = data.warnings.map(w => `
+                  <div class="alert-box alert-warning">
+                      <span class="material-symbols-rounded">warning</span>
+                      <span>${w}</span>
+                  </div>
+              `).join('');
+              await streamHtmlMessage(warningHTML);
+          }
 
           // Save to persistent storage for refresh restoration
           localStorage.setItem('spendguard_last_id', data.history_id);
@@ -1069,7 +1093,9 @@
                 body: JSON.stringify(reqBody) 
             });
             
-            if (!chatRes.ok) throw new Error("Chat server error: " + chatRes.status);
+            if (!chatRes.ok) {
+                throw new Error("Server error: " + chatRes.status);
+            }
             const chatData = await chatRes.json();
             
             stopThinkingAnimation();
@@ -1379,17 +1405,23 @@
         initCurrency();
         loadHistory();
 
-        // Wait for Backend Readiness (Health check)
+        // Wait for Backend Readiness (Health check) - Added retry limit to prevent hang
         let backendReady = false;
-        while (!backendReady) {
+        let attempts = 0;
+        const maxAttempts = 5;
+
+        while (!backendReady && attempts < maxAttempts) {
+            attempts++;
             try {
                 const response = await fetch(`${API_BASE_URL}/health`);
                 if (response.ok) {
                     backendReady = true;
+                } else {
+                    throw new Error("Not ready");
                 }
             } catch (err) {
-                console.log("Backend warming up...");
-                await new Promise(r => setTimeout(r, 1000));
+                console.log(`Backend warming up (Attempt ${attempts})...`);
+                if (attempts < maxAttempts) await new Promise(r => setTimeout(r, 1500));
             }
         }
 
@@ -1412,6 +1444,8 @@
                         const updatedName = restoredData.filename || lastFilename;
                         await displayAnalysis(currentData, updatedName);
                     }
+                } else {
+                    throw new Error("History fetch error: " + res.status);
                 }
             } catch (err) {
                 console.warn("Restoration failed, proceeding to clean dashboard.");
