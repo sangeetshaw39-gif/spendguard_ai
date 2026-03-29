@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpendGuard AI</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    :root {
+      --font-heading: 'Outfit', 'Google Sans', sans-serif;
+      --font-body: 'Inter', 'Google Sans Text', system-ui, sans-serif;
+      --font-mono: 'Roboto Mono', Consolas, monospace;
+
+      --spacing-1: 8px;
+      --spacing-2: 16px;
+      --spacing-3: 24px;
+      --spacing-4: 32px;
+      --spacing-5: 40px;
+      
+      --bg-primary: #FFFFFF;
+      --bg-surface: #F0F4F9;
+      --bg-sidebar: #F8F9FA;
+      --bg-code: #131314;
+      --text-high: #1F1F1F;
+      --text-muted: #444746;
+      --border-color: rgba(0,0,0,0.08);
+      --gradient-brand: linear-gradient(100deg, #4285F4, #9B72CB, #D96570);
+      
+      --easing-standard: cubic-bezier(0.2, 0.0, 0, 1.0);
+    }
+
+    body.dark-mode {
+      --bg-primary: #131314;
+      --bg-surface: #1E1F20;
+      --bg-sidebar: #191A1C;
+      --bg-code: #000000;
+      --text-high: #E3E3E3;
+      --text-muted: #C4C7C5;
+      --border-color: rgba(255,255,255,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-primary);
+      color: var(--text-high);
+      line-height: 1.6;
+      font-size: 16px;
+      height: 100vh;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+      transition: background-color 0.3s var(--easing-standard);
+    }
+
+    /* Sidebar Layout */
+    .sidebar {
+      width: 260px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-2);
+      transition: width 0.3s var(--easing-standard);
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: var(--spacing-1) 0 var(--spacing-3);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .new-chat-btn {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 9999px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--text-high);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+      width: 100%;
+    }
+    .new-chat-btn:hover { background: rgba(100,100,100,0.1); }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      margin-top: var(--spacing-3);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-item {
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      color: var(--text-high);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .history-item:hover { background: rgba(100,100,100,0.1); }
+    .history-item .meta { font-size: 12px; color: var(--text-muted); display: block; margin-top:2px; }
+
+    .delete-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 0.2s, color 0.2s;
+    }
+    .history-item:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { color: #D96570; background: rgba(217,101,112,0.1); }
+
+    /* Main App Area */
+    .app-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    h1, h2, h3, h4 { font-family: var(--font-heading); font-weight: 500; letter-spacing: -0.02em; }
+    
+    .gradient-text {
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      display: inline-block;
+    }
+
+    .app-header {
+      padding: var(--spacing-2) var(--spacing-3);
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .currency-select {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-color);
+      border-radius: 99px;
+      padding: 8px 18px;
+      color: var(--text-high);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 36px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='20' viewBox='0 -960 960 960' width='20'%3E%3Cpath fill='%23666' d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    
+    body.dark-mode .currency-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='20' viewBox='0 -960 960 960' width='20'%3E%3Cpath fill='%23ccc' d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
+    }
+
+    .currency-select:hover, .currency-select:focus {
+      background-color: var(--bg-surface);
+      border-color: #4285F4;
+    }
+    
+    .currency-select option {
+      background-color: var(--bg-sidebar);
+      color: var(--text-high);
+      padding: 12px;
+    }
+
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--spacing-4) var(--spacing-2);
+      scroll-behavior: smooth;
+    }
+
+    .chat-stream-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-4);
+      padding-bottom: 120px;
+    }
+
+    .message {
+      display: flex;
+      gap: var(--spacing-2);
+      opacity: 0;
+      transform: translateY(10px);
+      animation: msgFadeIn 0.3s var(--easing-standard) forwards;
+    }
+    .message.user-message { flex-direction: row-reverse; }
+
+    .alert-box {
+      padding: 12px 16px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      margin-top: 8px;
+    }
+    .alert-error { background: rgba(217, 101, 112, 0.1); color: #D96570; border-color: rgba(217, 101, 112, 0.2); }
+    .alert-warning { background: rgba(251, 188, 5, 0.1); color: #E37400; border-color: rgba(251, 188, 5, 0.2); }
+    .alert-info { background: rgba(66, 133, 244, 0.1); color: #4285F4; border-color: rgba(66, 133, 244, 0.2); }
+    
+    body.dark-mode .alert-error { color: #f28b82; }
+    body.dark-mode .alert-warning { color: #fdd663; }
+    body.dark-mode .alert-info { color: #8ab4f8; }
+
+    .avatar {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .message-content {
+      padding: 12px 20px;
+      border-radius: 24px;
+      max-width: 85%;
+      border: 1px solid transparent;
+    }
+    .user-message .message-content { background: var(--bg-surface); }
+    .ai-message .message-content {
+      background: transparent;
+      padding: 4px 0;
+      color: var(--text-high);
+      max-width: 100%;
+      width: 100%;
+    }
+    .ai-message p { margin-bottom: 1rem; }
+
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--spacing-2);
+      margin: var(--spacing-2) 0;
+    }
+    .insight-card {
+      background: var(--bg-surface);
+      padding: var(--spacing-3);
+      border-radius: 24px;
+      border: 1px solid var(--border-color);
+    }
+    .insight-card h3 { font-size: 14px; color: var(--text-muted); margin-bottom: 8px; }
+    .insight-card .value { font-size: 32px; font-family: var(--font-heading); }
+
+    /* Chart Layout */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-2);
+      margin-top: var(--spacing-3);
+    }
+    .chart-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: var(--spacing-3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Actions Pill row */
+    .actions-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .action-badge {
+      padding: 8px 16px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-high);
+      font-size: 13px;
+      font-family: var(--font-body);
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .action-badge:hover { background: var(--bg-surface); }
+    .action-badge.primary { border-color: #4285F4; color: #4285F4; }
+
+    .token-stream::after {
+      content: '▋';
+      animation: blink 1s step-end infinite;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    .input-wrapper {
+      position: absolute;
+      bottom: var(--spacing-4);
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 860px;
+      background: var(--bg-surface);
+      border-radius: 9999px;
+      display: flex;
+      align-items: flex-end;
+      padding: 12px var(--spacing-2);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      z-index: 10;
+    }
+    .input-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-high);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      flex-shrink: 0;
+      margin-bottom: 2px;
+    }
+    .input-btn:hover { background: rgba(150,150,150,0.15); }
+    .input-btn.submit { color: #4285F4; }
+    .input-btn.submit:hover { background: rgba(66, 133, 244, 0.1); }
+    .main-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 16px;
+      color: var(--text-high);
+      resize: none;
+      max-height: 150px;
+      min-height: 44px;
+      outline: none;
+    }
+    .main-input::placeholder { color: var(--text-muted); }
+
+    #fileInput { display: none; }
+    .file-chip {
+      position: absolute;
+      top: -48px;
+      left: 24px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 8px 16px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: none;
+    }
+
+    .hero { text-align: center; margin: auto; max-width: 650px; padding-top: 8vh; }
+    .hero h1 { font-size: 40px; margin-bottom: 12px; }
+    .hero p { color: var(--text-muted); font-size: 16px; line-height: 1.5; margin-bottom: 24px; }
+    
+    .benefits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+    .benefit-card { background: var(--bg-code); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center; }
+    .benefit-icon { color: #4285F4; margin-bottom: 8px; font-size: 24px; }
+    .benefit-title { font-weight: 600; font-size: 14px; color: var(--text-high); }
+
+    @keyframes msgFadeIn { to { opacity: 1; transform: translateY(0); } }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    .thinking-state {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-heading);
+      padding: var(--spacing-2) 0;
+    }
+    
+    .ai-circle {
+      width: 24px;
+      height: 24px;
+      animation: pulseMorph 3s infinite var(--easing-standard);
+      transform-origin: center;
+    }
+    .ai-circle-inner {
+      width: 100%;
+      height: 100%;
+      background: var(--gradient-brand);
+      border-radius: 50%;
+      transition: all 0.5s ease;
+    }
+
+    @keyframes pulseMorph {
+      0%, 100% { transform: scale(0.9); opacity: 0.8; }
+      50% { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 10px rgba(66, 133, 244, 0.7)); }
+    }
+
+    /* Custom Scrollbar Styling */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-surface); }
+    ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.4); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.6); }
+
+    /* Custom Currency Selector Styling */
+    .currency-select {
+      background-color: var(--bg-surface);
+      color: var(--text-high);
+      border: 1px solid var(--border-color);
+      padding: 8px 32px 8px 16px;
+      border-radius: 20px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+      /* Custom Chevron */
+      background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23888888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpolyline points="6 9 12 15 18 9"%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      transition: all 0.2s;
+    }
+    .currency-select:hover { border-color: rgba(255, 255, 255, 0.2); }
+    .currency-select:focus { border-color: #4285F4; }
+    body.light-mode .currency-select {
+      background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23555555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpolyline points="6 9 12 15 18 9"%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E');
+    }
+    .currency-select option {
+      background-color: var(--bg-surface);
+      color: var(--text-high);
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="ai-circle" style="animation: none; width:20px; height:20px;">
+        <div class="ai-circle-inner"></div>
+      </div>
+      SpendGuard
+    </div>
+    <button class="new-chat-btn" onclick="location.reload()">
+      <span class="material-symbols-rounded" style="font-size:18px;">add</span> New Analysis
+    </button>
+    <div style="margin-top: 24px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform:uppercase;">Recent Analyses</div>
+    <div class="history-list" id="historyList">
+      <!-- Injected via localStorage JS -->
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="app-main">
+    <header class="app-header">
+      <select class="currency-select" id="currencySelector" onchange="setCurrency(this.value)">
+        <option value="₹">₹ INR (Indian)</option>
+        <option value="$">$ USD (International)</option>
+        <option value="€">€ EUR (European)</option>
+        <option value="£">£ GBP (British)</option>
+        <option value="¥">¥ JPY (Japanese)</option>
+      </select>
+      <button class="input-btn" onclick="toggleTheme()" title="Toggle Theme">
+        <span class="material-symbols-rounded" id="themeIcon">dark_mode</span>
+      </button>
+    </header>
+
+    <main class="chat-container" id="scrollContainer">
+      <div class="chat-stream-inner" id="chatStream">
+        
+        <div class="hero" id="heroView">
+          <h1 class="gradient-text">Your AI CFO for Spend Intelligence</h1>
+          <p>Upload your transaction ledger to instantly uncover hidden costs, detect anomalies, and receive actionable financial decisions.</p>
+          
+          <div class="benefits-grid">
+            <div class="benefit-card">
+              <div class="material-symbols-rounded benefit-icon">search_insights</div>
+              <div class="benefit-title">Detect hidden costs</div>
+            </div>
+            <div class="benefit-card">
+              <div class="material-symbols-rounded benefit-icon">warning</div>
+              <div class="benefit-title">Identify anomalies</div>
+            </div>
+            <div class="benefit-card">
+              <div class="material-symbols-rounded benefit-icon">query_stats</div>
+              <div class="benefit-title">Get actionable decisions</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="thinking-state" id="thinkingIndicator">
+          <div class="ai-circle"><div class="ai-circle-inner"></div></div>
+          <span id="thinkingText">Preparing secure environment...</span>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Input Box -->
+    <div class="input-wrapper">
+      <div class="file-chip" id="fileChip">
+        <span class="material-symbols-rounded" style="color: #4285F4; font-size: 20px;">description</span>
+        <span id="fileNameDisplay" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;"></span>
+        <span class="material-symbols-rounded" style="cursor: pointer; font-size: 16px;" onclick="clearFile()">close</span>
+      </div>
+
+      <button class="input-btn" onclick="document.getElementById('fileInput').click()" title="Upload File">
+        <span class="material-symbols-rounded">add</span>
+      </button>
+      <input type="file" id="fileInput" accept=".csv, .xlsx">
+      
+      <textarea class="main-input" id="userInput" placeholder="Ask about your data, or upload an expense file directly..." rows="1" oninput="autoResize(this)"></textarea>
+      
+      <button class="input-btn submit" onclick="handleSend()" title="Send">
+        <span class="material-symbols-rounded">send</span>
+      </button>
+    </div>
+    <div style="text-align: center; font-size: 11px; font-weight: 500; color: var(--text-muted); padding: 8px 12px; margin-bottom: 8px; display: flex; justify-content: center; align-items: center; gap: 4px;">
+       <span class="material-symbols-rounded" style="font-size: 14px;">lock</span> Secure processing. No active financial tracking datasets are permanently stored or accessed.
+    </div>
+  </div>
+
+  <script>
+    // System logic for SpendGuard UI - using relative paths for universal deployment
+    const API_BASE_URL = ''; 
+
+    let currentData = null;
+    let isProcessing = false;
+    let chartInstances = [];
+    let activeCurrency = '₹';
+
+    const chatStream = document.getElementById('chatStream');
+    const heroView = document.getElementById('heroView');
+    const scrollContainer = document.getElementById('scrollContainer');
+    const thinkingIndicator = document.getElementById('thinkingIndicator');
+    const fileInput = document.getElementById('fileInput');
+    const fileChip = document.getElementById('fileChip');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const promptInput = document.getElementById('userInput');
+    const thinkingText = document.getElementById('thinkingText');
+    let thinkingInterval = null;
+
+    // Foreign Exchange Conversion Logic
+    const exchangeRates = {
+      '₹': 83.5,   // Base INR
+      '$': 1.0,    // Base USD
+      '€': 0.92,   // Base EUR
+      '£': 0.79,   // Base GBP
+      '¥': 151.5   // Base JPY
+    };
+
+    function convertValue(val, fromSym, toSym) {
+      if (!val || fromSym === toSym) return Number(val);
+      const fromRate = exchangeRates[fromSym] || 1;
+      const toRate = exchangeRates[toSym] || 1;
+      return (Number(val) / fromRate) * toRate;
+    }
+
+    // 1. Theme Configuration
+    function initTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.body.classList.add('dark-mode');
+        document.getElementById('themeIcon').innerText = 'light_mode';
+      } else {
+        document.getElementById('themeIcon').innerText = 'dark_mode';
+      }
+      // Re-render charts based on theme if they exist (colors update)
+      if(chartInstances.length) { chartInstances.forEach(c => c.update()); }
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.classList.toggle('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      document.getElementById('themeIcon').innerText = isDark ? 'light_mode' : 'dark_mode';
+      
+      // Force ChartJS to pick up new CSS variables
+      Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-high');
+      chartInstances.forEach(c => c.update());
+    }
+
+    // 1.5 Currency Configuration
+    function formatCurrency(val, sym = null) {
+      const s = sym || activeCurrency;
+      const num = Number(val);
+      
+      // Indian specific formatting for ₹
+      if (s === '₹') {
+        return s + Math.floor(num).toLocaleString('en-IN');
+      }
+      
+      // International formatting for others
+      const locales = { '$': 'en-US', '€': 'de-DE', '£': 'en-GB', '¥': 'ja-JP' };
+      const locale = locales[s] || 'en-US';
+      
+      return num.toLocaleString(locale, {
+        style: 'currency',
+        currency: s === '$' ? 'USD' : s === '€' ? 'EUR' : s === '£' ? 'GBP' : s === '¥' ? 'JPY' : 'USD',
+        maximumFractionDigits: 0
+      }).replace(/\.00$/, '');
+    }
+
+    function setCurrency(sym) {
+      activeCurrency = sym;
+      localStorage.setItem('spendguard_currency', sym);
+      loadHistory();
+      if(currentData) {
+        // Redraw current view with new mathematical currency format
+        chatStream.querySelectorAll('.message').forEach(m => m.remove());
+        displayAnalysis(currentData, "Refreshing view...", true);
+      }
+    }
+
+    function initCurrency() {
+      const saved = localStorage.getItem('spendguard_currency');
+      if(saved) {
+        activeCurrency = saved;
+        document.getElementById('currencySelector').value = saved;
+      }
+    }
+    async function loadHistory() {
+      const historyList = document.getElementById('historyList');
+      try {
+          const res = await fetch(API_BASE_URL + '/history');
+          const history = await res.json();
+          
+          historyList.innerHTML = '';
+          if(!history || history.length === 0) {
+            historyList.innerHTML = `<div style="padding:12px; font-size:13px; color:var(--text-muted);">No history found</div>`;
+            return;
+          }
+          
+          history.forEach((h) => {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            
+            item.onclick = async (e) => {
+                 if(e.target.closest('.delete-btn')) return; // ignore if delete clicked
+                 if (heroView) heroView.style.display = 'none';
+                 chatStream.querySelectorAll('.message').forEach(m => m.remove());
+                 chartInstances.forEach(c => c.destroy());
+                 chartInstances = [];
+                 
+                 startThinkingAnimation();
+                 scrollToBottom();
+                 
+                 const fullRes = await fetch(`${API_BASE_URL}/history/${h.id}`);
+                 const fullData = await fullRes.json();
+                 
+                 currentData = fullData.payload;
+                 stopThinkingAnimation();
+                 appendUserMessage(`Opening log: ${h.filename}`, false);
+                 await displayAnalysis(currentData, h.filename);
+            };
+
+            const convertedSpend = convertValue(h.spend, h.currency, activeCurrency);
+            
+            item.innerHTML = `
+              <div style="flex:1; overflow:hidden;">
+                <div style="font-size: 13px; font-weight: 500; color: var(--text-high); margin-bottom: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${h.filename}</div>
+                <div class="meta">${new Date(h.date).toLocaleDateString()} &nbsp;&bull;&nbsp; ${formatCurrency(convertedSpend, activeCurrency)}</div>
+              </div>
+              <div style="display:flex; gap:4px; opacity:0.8;">
+                <button class="delete-btn" onclick="renameHistory('${h.id}', '${h.filename.replace(/'/g, "\\'")}')" title="Rename report">
+                  <span class="material-symbols-rounded" style="font-size:15px;">edit</span>
+                </button>
+                <button class="delete-btn" onclick="deleteHistory('${h.id}')" title="Delete report">
+                  <span class="material-symbols-rounded" style="font-size:15px;">delete</span>
+                </button>
+              </div>
+            `;
+            historyList.appendChild(item);
+          });
+      } catch (err) {
+          console.error("History fetch error:", err);
+          if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.name === 'TypeError') {
+              historyList.innerHTML = `<div style="padding:12px; font-size:13px; color:#D96570;">⚠️ Server Offline. Please run <b>python main.py</b> to start the backend.</div>`;
+          } else {
+              historyList.innerHTML = `<div style="padding:12px; font-size:13px; color:#D96570;">⚠️ Failed to load history</div>`;
+          }
+      }
+    }
+
+    async function renameHistory(id, oldName) {
+        if(event) event.stopPropagation();
+        const newName = prompt("Rename report:", oldName);
+        if (!newName || newName === oldName) return;
+        
+        await fetch(`${API_BASE_URL}/history/${id}`, { 
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_name: newName })
+        });
+        loadHistory();
+    }
+
+    async function deleteHistory(id) {
+        if(event) event.stopPropagation();
+        if(!confirm("Are you sure you want to delete this analysis?")) return;
+        await fetch(`${API_BASE_URL}/history/${id}`, { method: 'DELETE' });
+        loadHistory();
+    }
+
+    async function reanalyzeCurrent(id) {
+        if (!id) return;
+        const btn = document.getElementById('reanalyzeBtn');
+        const icon = document.getElementById('reanalyzeIcon');
+        
+        btn.disabled = true;
+        btn.innerText = "Upgrading Intelligence...";
+        icon.classList.add('rotating'); // If we had a CSS rotating class
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/history/${id}/reanalyze`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                currentData = data.payload;
+                // Re-display to show new parsed text
+                chatStream.querySelectorAll('.message').forEach(m => m.remove());
+                displayAnalysis(currentData, currentData.filename || "Updated Report", true);
+            } else {
+                alert("Upgrade failed: " + data.message);
+            }
+        } catch (err) {
+            alert("Connection error during AI upgrade.");
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function saveHistory() {
+        // Backend now handles auto-saving on /analyze, so we just refresh the UI
+        loadHistory();
+    }
+
+    fileInput.onchange = () => {
+      if (fileInput.files.length > 0) {
+        fileNameDisplay.innerText = fileInput.files[0].name;
+        fileChip.style.display = 'flex';
+        promptInput.focus();
+      }
+    };
+
+    function clearFile() {
+      fileInput.value = '';
+      fileChip.style.display = 'none';
+    }
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = (el.scrollHeight) + 'px';
+      if (el.value === '') el.style.height = '44px';
+    }
+
+    promptInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+
+    function startThinkingAnimation() {
+        const statuses = ["Analyzing parameters...", "Scanning for anomalies...", "Drafting CFO Report..."];
+        let sIdx = 0;
+        thinkingText.innerText = statuses[0];
+        thinkingIndicator.style.display = 'flex';
+        thinkingInterval = setInterval(() => {
+            sIdx = (sIdx + 1) % statuses.length;
+            thinkingText.innerText = statuses[sIdx];
+        }, 3000);
+    }
+    
+    function stopThinkingAnimation() {
+        if (thinkingInterval) clearInterval(thinkingInterval);
+        thinkingIndicator.style.display = 'none';
+        thinkingText.innerText = "Thinking...";
+    }
+
+    function scrollToBottom() {
+      scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+    }
+
+
+    function appendUserMessage(text, hasFile) {
+      if (heroView) heroView.style.display = 'none';
+      let content = text;
+      if (hasFile) {
+        content += `<br><span style="color:var(--text-muted); font-size:14px; display:inline-flex; align-items:center; gap:4px; margin-top:8px;"><span class="material-symbols-rounded" style="font-size:16px;">description</span> Attached: ${fileInput.files[0].name}</span>`;
+      }
+
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message user-message';
+      msgDiv.innerHTML = `<div class="message-content">${content}</div>`;
+      chatStream.insertBefore(msgDiv, thinkingIndicator);
+      scrollToBottom();
+    }
+
+    async function streamAIMessage(htmlContent, renderChartsFunc) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message ai-message';
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content token-stream';
+
+      msgDiv.innerHTML = `<div class="avatar"><div class="ai-circle" style="animation:none; width:16px; height:16px;"><div class="ai-circle-inner"></div></div></div>`;
+      msgDiv.appendChild(contentDiv);
+      chatStream.insertBefore(msgDiv, thinkingIndicator);
+
+      contentDiv.innerHTML = htmlContent;
+      contentDiv.classList.remove('token-stream');
+
+      const children = contentDiv.children;
+      for (let i = 0; i < children.length; i++) {
+        children[i].style.opacity = '0';
+        children[i].style.transform = 'translateY(10px)';
+        children[i].style.transition = 'all 0.4s var(--easing-standard)';
+      }
+
+      for (let i = 0; i < children.length; i++) {
+        await new Promise(r => setTimeout(r, 150));
+        children[i].style.opacity = '1';
+        children[i].style.transform = 'translateY(0)';
+        scrollToBottom();
+        
+        // Execute chart plotting exactly when charts row fades in
+        if(children[i].className && children[i].className.includes('charts-row') && renderChartsFunc) {
+            renderChartsFunc();
+        }
+      }
+    }
+
+    async function streamSimpleText(text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message ai-message';
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content token-stream';
+      msgDiv.innerHTML = `<div class="avatar"><div class="ai-circle" style="animation:none; width:16px; height:16px;"><div class="ai-circle-inner"></div></div></div>`;
+      msgDiv.appendChild(contentDiv);
+      chatStream.insertBefore(msgDiv, thinkingIndicator);
+
+      const words = text.split(' ');
+      for (let i = 0; i < words.length; i++) {
+        contentDiv.innerHTML += words[i] + ' ';
+        if (i % 5 === 0) scrollToBottom();
+        await new Promise(r => setTimeout(r, 20 + Math.random() * 30));
+      }
+      contentDiv.classList.remove('token-stream');
+      scrollToBottom();
+    }
+
+    async function streamHtmlMessage(htmlContent) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message ai-message';
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+      msgDiv.innerHTML = `<div class="avatar"><div class="ai-circle" style="animation:none; width:16px; height:16px;"><div class="ai-circle-inner"></div></div></div>`;
+      msgDiv.appendChild(contentDiv);
+      chatStream.insertBefore(msgDiv, thinkingIndicator);
+
+      contentDiv.style.opacity = '0';
+      contentDiv.style.transform = 'translateY(10px)';
+      contentDiv.innerHTML = htmlContent;
+      scrollToBottom();
+
+      await new Promise(r => setTimeout(r, 50));
+      contentDiv.style.transition = 'all 0.4s var(--easing-standard)';
+      contentDiv.style.opacity = '1';
+      contentDiv.style.transform = 'translateY(0)';
+      scrollToBottom();
+    }
+
+
+    async function handleSend() {
+      const text = promptInput.value.trim();
+      const hasFile = fileInput.files.length > 0;
+      let filename = hasFile ? fileInput.files[0].name : "Unknown";
+
+      if (!text && !hasFile) return;
+      if (isProcessing) return;
+
+      isProcessing = true;
+      appendUserMessage(text || "Please analyze this file.", hasFile);
+      promptInput.value = '';
+      autoResize(promptInput);
+
+      startThinkingAnimation();
+      scrollToBottom();
+
+      try {
+        if (hasFile) {
+          const fd = new FormData();
+          fd.append('file', fileInput.files[0]);
+          clearFile();
+
+          const res = await fetch(API_BASE_URL + '/analyze', { method: 'POST', body: fd });
+          if (!res.ok) throw new Error("Server response error: " + res.status);
+          
+          const data = await res.json();
+          currentData = data; 
+          stopThinkingAnimation();
+
+          if (data.status === 'error') throw new Error(data.message);
+
+          const totalSpend = data.insights.total_spend || 0;
+          saveHistory(filename, totalSpend, data);
+
+          await displayAnalysis(data, filename);
+
+        } else {
+
+          if (!currentData) {
+            stopThinkingAnimation();
+            await streamHtmlMessage(`<div class="alert-box alert-info"><span class="material-symbols-rounded">info</span> <span>Please upload an expense file first. I need your data context to answer questions accurately!</span></div>`);
+          } else {
+            // Inject localized formatting into context for the offline/online AI
+            const enhancedContext = JSON.parse(JSON.stringify(currentData.insights));
+            enhancedContext.total_str = formatCurrency(enhancedContext.total_spend, enhancedContext.currency);
+            
+            const reqBody = { user_query: text, context: enhancedContext };
+            const chatRes = await fetch(API_BASE_URL + '/chat', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(reqBody) 
+            });
+            
+            if (!chatRes.ok) throw new Error("Chat server error: " + chatRes.status);
+            const chatData = await chatRes.json();
+            
+            stopThinkingAnimation();
+            if (chatData.status === 'error') throw new Error(chatData.message);
+            
+            let formatted = chatData.response.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            await streamHtmlMessage(formatted);
+          }
+        }
+      } catch (err) {
+        stopThinkingAnimation();
+        const msg = err.message.replace("Server response error: 500", "The server encountered an unexpected error processing your data.");
+        await streamHtmlMessage(`<div class="alert-box alert-error"><span class="material-symbols-rounded">error</span> <span>${msg}</span></div>`);
+      } finally {
+        isProcessing = false;
+      }
+    }
+
+    async function displayAnalysis(data, filename, isRefresh = false) {
+          const fileCurrency = data.insights.currency || '₹';
+          
+          // Only overwrite global currency if it's a new file analysis or first load
+          if(fileCurrency && !isRefresh) {
+            activeCurrency = fileCurrency;
+            document.getElementById('currencySelector').value = activeCurrency;
+          }
+          
+          const totalSpend = data.insights.total_spend || 0;
+          const convertedSpend = convertValue(totalSpend, fileCurrency, activeCurrency);
+          const spendStr = formatCurrency(convertedSpend, activeCurrency);
+          
+          const chartId1 = `catChart_${Date.now()}`;
+          const chartId2 = `venChart_${Date.now()}`;
+
+          const csvBtn = data.clean_csv_string ? `
+                <button class="action-badge primary" onclick="downloadCSV()">
+                    <span class="material-symbols-rounded">table</span> Download Cleaned Data (CSV)
+                </button>` : '';
+
+          const refreshBtn = `
+                <button class="action-badge" id="reanalyzeBtn" onclick="reanalyzeCurrent('${data.history_id || ''}')" style="background: rgba(66, 133, 244, 0.1); color: #4285F4; border: 1px solid rgba(66, 133, 244, 0.3);">
+                    <span class="material-symbols-rounded" id="reanalyzeIcon">sync</span> Refresh AI Intelligence
+                </button>
+          `;
+
+          const actionsRow = `
+            <div class="actions-row">
+                ${csvBtn}
+                <div style="display:flex; gap:8px;">
+                    ${data.history_id ? refreshBtn : ''}
+                    <button class="action-badge" onclick="downloadJSON()">
+                        <span class="material-symbols-rounded">code</span> Export (JSON)
+                    </button>
+                    <button class="action-badge" onclick="downloadPDF()">
+                        <span class="material-symbols-rounded">picture_as_pdf</span> PDF Report
+                    </button>
+                </div>
+            </div>
+          `;
+
+          const htmlResponse = `
+              <p>Analysis initialized. Here are the core insights tracked for <strong>${filename}</strong>:</p>
+              
+              <div class="insights-grid">
+                  <div class="insight-card">
+                      <h3>Total Spend</h3>
+                      <div class="value gradient-text">${spendStr}</div>
+                  </div>
+                  <div class="insight-card">
+                      <h3>Anomalies Detected</h3>
+                      <div class="value">${data.anomalies_count}</div>
+                  </div>
+              </div>
+
+              <div class="charts-row">
+                  <div class="chart-container">
+                      <h4 style="margin-bottom:12px; font-size:14px; color:var(--text-muted);">Top Categories</h4>
+                      <canvas id="${chartId1}" style="max-height: 200px; width:100%;"></canvas>
+                  </div>
+                  <div class="chart-container">
+                      <h4 style="margin-bottom:12px; font-size:14px; color:var(--text-muted);">Top Vendors</h4>
+                      <canvas id="${chartId2}" style="max-height: 200px; width:100%;"></canvas>
+                  </div>
+              </div>
+
+              <h3 style="margin-top:32px; font-family:var(--font-heading); font-size:20px; color:#4285F4;">CFO Decision Intelligence</h3>
+              <div id="aiOutputContainer" style="margin-top:12px; color:var(--text-muted); line-height:1.6; font-size:15px; background:var(--bg-code); padding:20px; border-radius:12px; border:1px solid var(--border-color);">
+                  ${data.ai_insights
+                      .replace(/### (.*?)\n/g, '<h4 style="margin-top:24px; margin-bottom:12px; color:var(--text-high); font-size:16px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">$1</h4>')
+                      .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text-high);">$1</strong>')
+                      .replace(/- \*\*(Problem|Observed Trend):\*\*/gi, '<div style="margin-bottom:4px;">&#8226; <strong style="color:#D96570;">$1:</strong>')
+                      .replace(/- \*\*(Impact|Economic Impact):\*\*/gi, '</div><div style="margin-bottom:4px;">&#8226; <strong style="color:#E37400;">$1:</strong>')
+                      .replace(/- \*\*(Recommendation|Executive Action):\*\*/gi, '</div><div style="margin-bottom:12px;">&#8226; <strong style="color:#34A853;">$1:</strong>')
+                      .replace(/- Problem:/gi, '<div style="margin-bottom:4px;">&#8226; <strong style="color:#D96570;">Problem:</strong>')
+                      .replace(/- Impact:/gi, '</div><div style="margin-bottom:4px;">&#8226; <strong style="color:#E37400;">Impact:</strong>')
+                      .replace(/- Recommendation:/gi, '</div><div style="margin-bottom:12px;">&#8226; <strong style="color:#34A853;">Recommendation:</strong>')
+                      .replace(/\n\n/g, '<br>')
+                      .replace(/\n/g, '') + '</div>'}
+              </div>
+              
+              ${actionsRow}
+          `;
+
+          const renderChartsFunc = () => {
+              plotCharts(chartId1, chartId2, data.insights);
+          };
+
+          await streamAIMessage(htmlResponse, renderChartsFunc);
+    }
+    
+    // Chart.js Wrapper Function
+    function plotCharts(catId, venId, insights) {
+        // Prepare global styles for charts
+        Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-high').trim();
+        Chart.defaults.font.family = getComputedStyle(document.body).getPropertyValue('--font-body').trim();
+
+        const fileCurrency = insights.currency || '₹';
+
+        // Data prep (with mathematical scale conversion)
+        const cats = Object.keys(insights.top_categories);
+        const catVals = Object.values(insights.top_categories).map(v => convertValue(v, fileCurrency, activeCurrency));
+        
+        const vens = Object.keys(insights.top_vendors);
+        const venVals = Object.values(insights.top_vendors).map(v => convertValue(v, fileCurrency, activeCurrency));
+
+        // Chart 1: Categories (Doughnut)
+        const ctxCat = document.getElementById(catId).getContext('2d');
+        const c1 = new Chart(ctxCat, {
+            type: 'doughnut',
+            data: {
+                labels: cats,
+                datasets: [{
+                    data: catVals,
+                    backgroundColor: ['#4285F4', '#9B72CB', '#D96570', '#34A853', '#FBBC05'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: {size: 11} } } }
+            }
+        });
+
+        // Chart 2: Vendors (Bar)
+        const ctxVen = document.getElementById(venId).getContext('2d');
+        const c2 = new Chart(ctxVen, {
+            type: 'bar',
+            data: {
+                labels: vens,
+                datasets: [{
+                    label: 'Spend',
+                    data: venVals,
+                    backgroundColor: '#4285F4',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { display: false }, // hide long vendor names
+                    y: { beginAtZero: true, grid: { color: 'rgba(150,150,150,0.1)'} }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        chartInstances.push(c1);
+        chartInstances.push(c2);
+    }
+
+    // ----------------------------------------
+    // DATA EXPORT FUNCTIONS
+    // ----------------------------------------
+    function downloadJSON() {
+      if (!currentData) return;
+      const blob = new Blob([JSON.stringify(currentData, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `SpendGuard_Analysis_${Date.now()}.json`;
+      a.click();
+    }
+
+    function downloadCSV() {
+      if (!currentData || !currentData.clean_csv_string) {
+          alert("CSV Data not available from backend.");
+          return;
+      }
+      const blob = new Blob([currentData.clean_csv_string], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `SpendGuard_CleanedData_${Date.now()}.csv`;
+      a.click();
+    }
+
+    function downloadPDF() {
+      if (!currentData) return;
+      
+      // Temporarily create a robust styling element specifically for PDF compilation
+      const reportDiv = document.createElement('div');
+      reportDiv.style.padding = '40px';
+      reportDiv.style.fontFamily = 'Inter, sans-serif';
+      reportDiv.style.color = '#1F1F1F';
+      reportDiv.style.background = '#FFFFFF';
+      reportDiv.style.width = '800px';
+
+      const total = formatCurrency(currentData.insights.total_spend, currentData.insights.currency);
+      const bullets = currentData.ai_insights.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+
+      const catChartCanvas = document.querySelector('canvas[id^="catChart"]');
+      const venChartCanvas = document.querySelector('canvas[id^="venChart"]');
+      
+      let chartHtml = '';
+      if(catChartCanvas && venChartCanvas) {
+         chartHtml = `
+            <div style="margin-top:40px;">
+               <h2 style="margin-bottom: 20px;">Visual Breakdown</h2>
+               <div style="text-align:center;">
+                  <div style="display:inline-block; width:45%; vertical-align:top; text-align:left;">
+                     <h4 style="margin-bottom:10px; color:#444746;">Top Categories</h4>
+                     <img src="${catChartCanvas.toDataURL('image/png', 1.0)}" style="width:100%; max-height:220px; object-fit:contain; border: 1px solid #E3E3E3; border-radius:12px; padding:10px;" />
+                  </div>
+                  <div style="display:inline-block; width:45%; vertical-align:top; text-align:left; margin-left:5%;">
+                     <h4 style="margin-bottom:10px; color:#444746;">Top Vendors</h4>
+                     <img src="${venChartCanvas.toDataURL('image/png', 1.0)}" style="width:100%; max-height:220px; object-fit:contain; border: 1px solid #E3E3E3; border-radius:12px; padding:10px;" />
+                  </div>
+               </div>
+            </div>
+         `;
+      }
+
+      reportDiv.innerHTML = `
+          <div style="border-bottom: 2px solid #4285F4; padding-bottom: 20px; margin-bottom: 30px;">
+              <h1 style="color: #4285F4; font-family: 'Outfit', sans-serif; margin: 0;">SpendGuard AI</h1>
+              <p style="margin: 0; color: #666; font-size: 14px;">Executive Spending Report</p>
+          </div>
+          
+          <h2 style="margin-bottom: 15px;">Financial Snapshot</h2>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; border:none;">
+              <tr>
+                  <td width="48%" valign="top">
+                      <div style="background: #F0F4F9; padding: 20px; border-radius: 12px; border: 1px solid #EBEBEB;">
+                          <p style="margin: 0 0 5px 0; color: #444746; font-size: 14px; font-family: sans-serif;">Total Spend Assessed</p>
+                          <h2 style="margin: 0; font-size: 32px; color: #1F1F1F; font-family: sans-serif;">${total}</h2>
+                      </div>
+                  </td>
+                  <td width="4%"></td>
+                  <td width="48%" valign="top">
+                      <div style="background: #F0F4F9; padding: 20px; border-radius: 12px; border: 1px solid #EBEBEB;">
+                          <p style="margin: 0 0 5px 0; color: #444746; font-size: 14px; font-family: sans-serif;">Anomalies Detected</p>
+                          <h2 style="margin: 0; font-size: 32px; color: #1F1F1F; font-family: sans-serif;">${currentData.anomalies_count}</h2>
+                      </div>
+                  </td>
+              </tr>
+          </table>
+
+          <h2 style="margin-bottom: 15px;">CFO Decision Intelligence</h2>
+          <div style="color: #444746; line-height: 1.6; font-size: 14px; background: #F8F9FA; padding: 15px; border-radius: 8px; border: 1px solid #EBEBEB;">
+              ${bullets}
+          </div>
+          
+          ${chartHtml}
+          
+          <div style="margin-top: 50px; text-align: center; color: #999; font-size: 12px;">
+              Generated automatically by SpendGuard AI engine.
+          </div>
+      `;
+
+      // We use html2pdf.js
+      const opt = {
+        margin:       1,
+        filename:     `SpendGuard_Executive_Report_${Date.now()}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(reportDiv).save();
+    }
+
+    // Initialization bindings
+    window.onload = () => {
+      initTheme();
+      initCurrency();
+      loadHistory();
+    };
+
+  </script>
+</body>
+</html>
